@@ -28,7 +28,9 @@ def crop_and_save_images(input_folder, output_folder, crop_box_percent):
                 cropped_img = img.crop((left, top, right, bottom))
                 
                 # Save the cropped image to the output folder
-                output_path = os.path.join(output_folder, filename)
+                filename_no_ext, file_extension = os.path.splitext(filename)
+                output_path = os.path.join(output_folder, f"{filename_no_ext}_cut{file_extension}")
+                # output_path = os.path.join(output_folder, filename)
                 cropped_img.save(output_path)
                 
                 print(f"Saved cropped image: {output_path}")
