@@ -1,8 +1,8 @@
 from PIL import Image
 import os
 import pytesseract
-
-
+import cv2
+import numpy as np
 
 def crop_and_save_images(input_folder, output_folder, crop_box_percent):
     # Create the output folder if it doesn't exist
@@ -36,50 +36,56 @@ def crop_and_save_images(input_folder, output_folder, crop_box_percent):
 pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
 
 def extract_timestamps(output_folder, output_file):
-
     timestamps = {}
     
     with open(output_file, 'w') as file:
         for filename in os.listdir(output_folder):
             if filename.lower().endswith(('.png', '.jpg', '.jpeg')):
                 image_path = os.path.join(output_folder, filename)
-                with Image.open(image_path) as img:
-                    text = pytesseract.image_to_string(img).strip()
-                    timestamps[filename] = text
-                    file.write(f"{filename}: {text}\n")
-                    print(f"Extracted timestamp from {filename}: {text}")
+                
+                # Preprocess the image before extracting text
+                # processed_img = preprocess_image(image_path)
+                
+                # Extract text using pytesseract
+                # text = pytesseract.image_to_string(processed_img).strip()
+                text = pytesseract.image_to_string(image_path).strip()
+                timestamps[filename] = text
+                file.write(f"{filename}: {text}\n")
+                print(f"Extracted timestamp from {filename}: {text}")
     
     return timestamps
-    # os.makedirs(output_text_folder, exist_ok=True)
-    # current_time = datetime.now().strftime("%Y%m%d_%H%M%S")
-    # output_file_path = os.path.join(output_folder, f"timestamps_{current_time}.txt")
 
-    # timestamps = {}
-    
-    # with open(output_file_path, 'w') as file:
-    #     for filename in os.listdir(output_folder):
-    #         if filename.lower().endswith(('.png', '.jpg', '.jpeg')):
-    #             image_path = os.path.join(output_file_path)
-    #             with Image.open(image_path) as img:
-    #                 text = pytesseract.image_to_string(img).strip()
-    #                 timestamps[filename] = text
-    #                 file.write(f"{filename}: {text}\n")
-    #                 print(f"Extracted timestamp from {filename}: {text}")
-    
-    # return timestamps
 
-    # for filename in os.listdir(output_folder):
-    #     if filename.lower().endswith(('.png', '.jpg', '.jpeg')):
-    #         image_path = os.path.join(output_folder, filename)
-            
-    #         # Open the cropped image
-    #         with Image.open(image_path) as img:
-    #             # Use pytesseract to extract text from the image
-    #             text = pytesseract.image_to_string(img)
-                
-    #             # Store the extracted timestamp with the corresponding filename
-    #             timestamps[filename] = text.strip()
-                
-    #             print(f"Extracted timestamp from {filename}: {text.strip()}")
+output_folder = 'timestamps'
+
+
+def preprocess_image(image_path):
+    # Read the image using OpenCV
+    img = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
+
+    img = cv2.equalizeHist(img)
+
+    # Optionally, apply sharpening using a kernel
+    kernel = np.array([[0, -1, 0], [-1, 5, -1], [0, -1, 0]])
+    img = cv2.filter2D(img, -1, kernel)
+
+    # debug start
+    # Extract filename and extension from the original image path
+    filename = os.path.basename(image_path)
+    filename_no_ext, file_extension = os.path.splitext(filename)
     
-    # return timestamps
+    # Create the new filename with _gs appended before the extension
+    grayscale_save_path = os.path.join(output_folder, f"{filename_no_ext}_gs{file_extension}")
+    
+    # Save the grayscale image
+    cv2.imwrite(grayscale_save_path, img)
+
+    # debug end
+
+
+    # Apply adaptive thresholding to improve text detection
+    processed_img = cv2.adaptiveThreshold(
+        img, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2)
+    
+    # Convert processed image back to PIL format
+    return Image.fromarray(processed_img)
